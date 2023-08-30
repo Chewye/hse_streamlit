@@ -5,3 +5,4 @@ numpydoc==1.4.0
 pandas==1.4.4
 streamlit==1.26.0
 seaborn
+scipy
