@@ -27,7 +27,7 @@ feat_dict = {
     'GEN_INDUSTRY': 'отрасль работы клиента',
     'GEN_TITLE': 'должность',
     'JOB_DIR': 'направление деятельности внутри компании',
-    'WORK_TIME': 'время работы на текущем месте (в месяцах)',
+    'WORK_TIME': 'время работы на текущем месте (в месяцах)- взят логарифм ',
     'FAMILY_INCOME': 'семейный доход (несколько категорий)',
     'PERSONAL_INCOME': 'личный доход клиента (в рублях)',
     'CREDIT': 'сумма последнего кредита клиента (в рублях)',
@@ -42,6 +42,11 @@ df = pd.read_csv('df.csv')
 st.header('Cource HSE "Linear models. EDA"')
 st.subheader('')
 
+st.write(f'Количество пропусков по признакам:')
+st.write(df.isna().sum().to_frame().T)
+st.write(f'Количество дубликатов: {df.duplicated().sum()}')
+
+
 st.write('Баланс целевого признака')
 fig = plt.figure()
 ax = sns.countplot(df.TARGET)
@@ -51,6 +56,7 @@ ax.set (xlabel='Наличие отклика',
 st.pyplot(fig)
 
 st.write(f"Соотношенеие целевого признака 1 к {int(df[df['TARGET']==0]['TARGET'].count() / df[df['TARGET']==1]['TARGET'].count())}")
+st.subheader('Распределение признаков и их оценки')
 
 numerical = ['AGE',
              'WORK_TIME',
@@ -63,9 +69,6 @@ cat_feat = ['OWN_AUTO',
             'FL_PRESENCE_FL',
             'CLOSED_FL',
             'DEPENDANTS',
-            'FACT_ADDRESS_PROVINCE',
-            'REG_ADDRESS_PROVINCE',
-            'POSTAL_ADDRESS_PROVINCE',
             'GENDER',
             'JOB_DIR',
             'EDUCATION',
@@ -77,23 +80,25 @@ cat_feat = ['OWN_AUTO',
             'GEN_TITLE',
             'SOCSTATUS_WORK_FL']
 
-add_selectbox = st.selectbox(
+add_selectbox = st.sidebar.selectbox(
     "Выберите тип признака (непрерывный, категориальный)",
     ("Numerical", "Categorical")
 )
-st.text(f'You choose {add_selectbox} type.')
+
 
 if add_selectbox == 'Numerical':
-    feature_choose = st.selectbox(
-        'Выберите признак',
+    feature_choose = st.sidebar.selectbox(
+        'Выберите признак для его анализа',
         numerical
     )
 else:
-    feature_choose = st.selectbox(
-        'Выберите признак',
+    feature_choose = st.sidebar.selectbox(
+        'Выберите признак его анализа',
         cat_feat
     )
 
+
+st.text(f'Вы выбрали признак {feature_choose} из {add_selectbox} типа.')
 st.write(feat_dict[feature_choose])
 
 if add_selectbox == 'Categorical':
@@ -129,12 +134,44 @@ else:
     st.pyplot(fig)
 
     st.write(f'Предварительные выбросы:')
-    if df[stats.zscore(df[feature_choose])< -3].shape[0] > 0:
-        st.write(f'до {df[stats.zscore(df[feature_choose])< -3][feature_choose].max()}')
     if df[stats.zscore(df[feature_choose]) > 3].shape[0] > 0:
         st.write(f'от {df[stats.zscore(df[feature_choose]) > 3][feature_choose].min()}')
 
+st.subheader('График зависимости целевой переменной от признака')
 
+
+if add_selectbox == 'Categorical':
+    fig = plt.figure()
+    ax = sns.countplot(data=df, x='TARGET', hue=feature_choose)
+    ax.set (xlabel='TARGET',
+    ylabel='Count',
+    title=f'Зависимость целевой переменной от {feature_choose}')
+    st.pyplot(fig)    
+    
+    st.write(f'Таблица зависимости (количество) целевой переменной (колонки) от признака {feature_choose}')
+    st.write(pd.DataFrame(\
+        data=[[df[(df['TARGET']==j)&(df[feature_choose]==i)].shape[0] for j in df['TARGET'].unique()] for i in df[feature_choose].unique()], \
+             index=df[feature_choose].unique() ,columns=df['TARGET'].unique()), index=df[feature_choose].unique())
+
+
+    st.write(f'Таблица зависимости (проценты) целевой переменной (колонки) от признака {feature_choose}')
+    st.write(pd.DataFrame(\
+        data=[[f"{round(df[(df['TARGET']==j)&(df[feature_choose]==i)].shape[0] / df.shape[0]*100, 2)}%" for j in df['TARGET'].unique()] for i in df[feature_choose].unique()], \
+             index=df[feature_choose].unique() ,columns=df['TARGET'].unique()), index=df[feature_choose].unique())
+
+else:
+    fig = plt.figure()
+    ax = sns.histplot(data=df, x=feature_choose, hue='TARGET' , kde=True)
+    ax.set (xlabel=feature_choose,
+    ylabel='Count',
+    title=f'histplot')
+    st.pyplot(fig)  
+    st.write(f"Корреляция целевого признака и {feature_choose}: {round(df[['TARGET', feature_choose]].corr().iloc[0, 1], 3)}") 
+
+
+
+
+st.subheader('Тепловая карта')
 options = st.multiselect(
     'Выберите признаки для генерации тепловой карты',
     numerical + cat_feat + ['TARGET'],
