@@ -1,9 +1,23 @@
 # импортируем библиотеку streamlit
 import streamlit as st
 import pandas as pd
+import numpy as np
 from matplotlib import pyplot as plt
 import seaborn as sns
 from scipy import stats
+import pickle
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.model_selection import train_test_split
+
+
+def metrics(y, predict):
+    accur = round(accuracy_score(y, predict), 3)
+    prec = round(precision_score(y, predict), 3)
+    rec = round(recall_score(y, predict), 3)
+    f1 = round(f1_score(y, predict), 3)
+
+    return pd.DataFrame({'Accuracy': accur, 'Precision': prec, 'Recall': rec, 'f1_score': f1}, index=['score'])
 
 
 plt.style.use("dark_background")
@@ -183,3 +197,31 @@ fig = plt.figure()
 ax = sns.heatmap(df[options].corr(), annot=True)
 ax.set (title=f'heatmap')
 st.pyplot(fig)
+
+
+df_model = pd.read_csv('df_model.csv')  #загруска датасета для модели
+X_train, X_test, y_train, y_test = train_test_split(df_model.drop(['TARGET', 'AGREEMENT_RK', 'ID_CLIENT', 'ID_LOAN'], axis=1), df['TARGET'], test_size=0.2, random_state=42)
+
+with open('model.pickle', 'rb') as f:
+    model = pickle.load(f)
+
+st.subheader('Модель линейной классификации')
+
+threshold = st.slider('Выберите порог предсказания', 0.0, 1.0, 0.01)
+
+predict_prob = model.predict_proba(X_test)
+
+
+st.write(metrics(y_test, np.where(predict_prob[:, 1] < threshold, 0, 1)))
+
+
+
+id_client = st.number_input(
+        f"Выберите клиента банка по ID и наша модель сделает прогноз отклика. От {df_model['ID_CLIENT'].min()} до {df_model['ID_CLIENT'].max()}",
+        106804370
+    )
+if id_client >= df_model['ID_CLIENT'].min() and id_client <= df_model['ID_CLIENT'].max():
+    st.write(f"Вероятность отклика  клиента с ID {id_client} = \
+              {round(model.predict_proba(df_model[df_model['ID_CLIENT']==id_client].drop(['TARGET', 'AGREEMENT_RK', 'ID_CLIENT', 'ID_LOAN'], axis=1))[0, 1], 3)}")
+else: 
+    st.write(f"Клиента с ID {id_client} не существует")

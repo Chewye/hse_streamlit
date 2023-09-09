@@ -55,9 +55,6 @@ scaler = MinMaxScaler()
 scaler.fit(df[numerical])
 df[numerical] = scaler.transform(df[numerical])
 
-scaler_id = MinMaxScaler()
-scaler_id.fit(df[['AGREEMENT_RK', 'ID_CLIENT', 'ID_LOAN']])
-df[['AGREEMENT_RK', 'ID_CLIENT', 'ID_LOAN']] = scaler_id.transform(df[['AGREEMENT_RK', 'ID_CLIENT', 'ID_LOAN']])
 
 
 df.to_csv('./df_prepare.csv', index=False)
